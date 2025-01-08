@@ -1,0 +1,58 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:13.5
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: my_admin
+      POSTGRES_PASSWORD: my_password
+      POSTGRES_DB: keycloak_db
+    ports:
+      - 5432:5432
+    networks:
+      - common-network
+  kc:
+    image: quay.io/keycloak/keycloak:legacy
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: db
+      DB_DATABASE: keycloak_db
+      DB_USER: my_admin
+      DB_SCHEMA: public
+      DB_PASSWORD: my_password
+      KEYCLOAK_HOSTNAME: backend-keycloak-auth
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    networks:
+      - common-network
+  backend-gateway-client:
+    build:
+      context: backend-gateway-client
+      dockerfile: Dockerfile
+    ports:
+      - 8083:8083
+    extra_hosts:
+      - "backend-keycloak-auth:host-gateway"
+      - "backend-resources:host-gateway"
+    networks:
+      - common-network
+  backend-resources:
+    build:
+      context: backend-resources
+      dockerfile: Dockerfile
+    ports:
+      - 8082:8082
+    extra_hosts:
+      - "backend-keycloak-auth:host-gateway"
+      - "backend-gateway-client:host-gateway"
+    networks:
+      - common-network
+
+networks:
+  common-network:
+    driver: bridge
